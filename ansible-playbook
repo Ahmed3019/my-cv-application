@@ -1,0 +1,30 @@
+---
+- name: "Automate Docker Build using Ansible"
+  hosts: localhost
+  tasks:
+    - name: Stop running container
+      command: docker stop frontend-task
+      ignore_errors: yes
+
+    - name: Remove stopped container
+      command: docker rm frontend-task
+      ignore_errors: yes
+
+    - name: Remove used image
+      command: docker ahmedsalama3014/frontend-task:v1 
+      ignore_errors: yes
+
+    - name: Build new image
+      command: docker build -t ahmedsalama3014/frontend-task:v1 .
+      args:
+        chdir: /home/control/depi-study/argoCD/My-cv-app
+
+    - name: Push docker image
+      command: docker push ahmedsalama3014/frontend-task:v1
+
+    - name: Run new container
+      command: docker run -d --name frontend-task -p 8020:80 ahmedsalama3014/frontend-task:v1
+    ##- name: Run migration inside container
+    ##  command: docker exec django-container sh -c "python3 manage.py makemigrations && python3 manage.py migrate"
+     ## ignore_errors: yes
+

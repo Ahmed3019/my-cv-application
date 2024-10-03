@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-app-deploy
+  namespace: frontend-task
+  labels: 
+    app: front-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: survey-app
+  template:
+    metadata:
+      labels:
+        app: survey-app
+    spec:
+      containers:
+        - name: survey-app
+          image: ahmedsalama3014/frontend-task:v4
+          ports:
+            - containerPort: 80

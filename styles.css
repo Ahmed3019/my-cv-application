@@ -1,0 +1,72 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #e0f7fa; /* Light cyan background for a fresh look */
+    color: #333;
+}
+
+.hero-section {
+    background: linear-gradient(to bottom, #00796b, #004d40); /* Dark teal gradient */
+    color: #fff;
+    padding: 50px 20px;
+    text-align: center;
+}
+
+.hero-title {
+    font-size: 3em;
+    margin: 0;
+}
+
+.hero-subtitle {
+    font-size: 1.5em;
+    margin: 10px 0 0;
+}
+
+.content-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+}
+
+.card {
+    background: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    margin: 10px;
+    padding: 20px;
+    width: 90%;
+    max-width: 800px;
+}
+
+.card h2 {
+    margin-top: 0;
+}
+
+.contact-section {
+    text-align: center;
+    padding: 20px;
+}
+
+.btn {
+    display: inline-block;
+    background-color: #00796b; /* Dark teal background */
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 5px;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+footer {
+    background-color: #004d40; /* Darker teal background */
+    color: #fff;
+    padding: 20px;
+    text-align: center;
+}
+
+footer a {
+    color: #4db6ac; /* Light cyan color */
+    text-decoration: none;
+}

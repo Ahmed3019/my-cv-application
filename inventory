@@ -1,0 +1,2 @@
+[ec2]
+34.226.204.227  ansible_user=ubuntu ansible_ssh_private_key_file=./nx-key.pem ansible_python_interpreter=/usr/bin/python3
