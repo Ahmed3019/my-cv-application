@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_CREDENTIALS_ID = 'docker-hub-cerd'
+        DOCKER_CREDENTIALS_ID = 'docker-hub-cred'
         DOCKERHUB_USERNAME = 'ahmedsalama3014'
         DOCKER_IMAGE = "${DOCKERHUB_USERNAME}/frontend-task:v1"
     }
