@@ -5,15 +5,25 @@ pipeline {
         DOCKER_IMAGE = "ahmedsalama3014/frontend-task" // Docker image name
         GIT_REPO = "git@github.com:Ahmed3019/my-cv-application.git" // GitHub repository URL
         K8S_NAMESPACE = "frontend-task" // Kubernetes namespace
-        TERRAFORM_DIR = "/home/control/depi-study/final-project/terraform" // Directory for Terraform files
+        TERRAFORM_DIR = "my-cv-application/terraform" // Directory for Terraform files
         INVENTORY_FILE = "hosts"  // Define the inventory file path for Ansible
+        EC2_PUBLIC_IP = '' // Initialize empty variable for EC2 IP
     }
 
     stages {
+        stage('Clone GitHub Repo') {
+            steps {
+                script {
+                    // Clone the GitHub repository
+                    git branch: 'main', credentialsId: 'github-cred', url: "${GIT_REPO}"
+                }
+            }
+        }
+
         stage('Build Docker Image') {
             steps {
                 script {
-                    // Build the Docker image using the Dockerfile in the current directory
+                    // Build the Docker image using the Dockerfile in the cloned repository
                     dockerImage = docker.build("${DOCKER_IMAGE}:latest")
                 }
             }
@@ -37,8 +47,10 @@ pipeline {
                     sh 'terraform apply -auto-approve'
 
                     script {
-                        def ip = sh(script: 'terraform output -json ec2_public_ip | jq -r .value', returnStdout: true).trim()
-                        writeFile file: "${INVENTORY_FILE}", text: "[ec2]\n${ip} ansible_user=ubuntu ansible_ssh_private_key_file=./nx-key.pem ansible_python_interpreter=/usr/bin/python3\n"
+                        // Extract the EC2 public IP from the Terraform output
+                        EC2_PUBLIC_IP = sh(script: 'terraform output -json ec2_public_ip | jq -r .value', returnStdout: true).trim()
+                        // Create an inventory file for Ansible using the EC2 IP
+                        writeFile file: "${INVENTORY_FILE}", text: "[ec2]\n${EC2_PUBLIC_IP} ansible_user=ubuntu ansible_ssh_private_key_file=./nx-key.pem ansible_python_interpreter=/usr/bin/python3\n"
                     }
                 }
             }
@@ -60,46 +72,14 @@ pipeline {
                     sh 'chmod 600 ./nx-key.pem'
 
                     // Transfer the Ansible playbook and shell script to the EC2 instance
-                    sh 'scp -i ./nx-key.pem setup_environment.yml ubuntu@${ip}:/home/ubuntu/'
-                    sh 'scp -i ./nx-key.pem run_playbook.sh ubuntu@${ip}:/home/ubuntu/'
+                    sh "scp -i ./nx-key.pem setup_environment.yml ubuntu@${EC2_PUBLIC_IP}:/home/ubuntu/"
+                    sh "scp -i ./nx-key.pem run_playbook.sh ubuntu@${EC2_PUBLIC_IP}:/home/ubuntu/"
 
                     // Execute the shell script on the EC2 instance
-                    sh 'ssh -i ./nx-key.pem ubuntu@${ip} "bash /home/ubuntu/run_playbook.sh"'
+                    sh "ssh -i ./nx-key.pem ubuntu@${EC2_PUBLIC_IP} 'bash /home/ubuntu/run_playbook.sh'"
                 }
             }
         }
 
-        // New stage to sleep for 60 seconds
         stage('Wait After Setup') {
             steps {
-                script {
-                    // Sleep for 60 seconds
-                    sleep 60
-                }
-            }
-        }
-
-        stage('Create Kubernetes Namespace') {
-            steps {
-                script {
-                    // Create the Kubernetes namespace
-                    sh "ssh -i ./nx-key.pem ubuntu@${ip} 'kubectl create namespace ${K8S_NAMESPACE} || echo \"Namespace ${K8S_NAMESPACE} already exists\"'"
-                }
-            }
-        }
-
-        stage('Deploy to Kubernetes') {
-            steps {
-                sh 'ssh -i ./nx-key.pem ubuntu@${ip} "kubectl apply -f deployment.yaml -n ${K8S_NAMESPACE}"'
-                sh 'ssh -i ./nx-key.pem ubuntu@${ip} "kubectl apply -f services.yaml -n ${K8S_NAMESPACE}"'
-            }
-        }
-    }
-
-    post {
-        always {
-            cleanWs()
-        }
-    }
-}
-
