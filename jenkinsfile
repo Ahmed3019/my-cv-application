@@ -5,8 +5,8 @@ pipeline {
         DOCKER_IMAGE = "ahmedsalama3014/frontend-task" // Docker image name
         GIT_REPO = "git@github.com:Ahmed3019/my-cv-application.git" // GitHub repository URL
         K8S_NAMESPACE = "frontend-task" // Kubernetes namespace
-        TERRAFORM_DIR = "my-cv-application/terraform" // Directory for Terraform files
-        INVENTORY_FILE = "hosts"  // Define the inventory file path for Ansible
+        TERRAFORM_DIR = "/home/control/depi-study/final-project/terraform" // Directory for Terraform files
+        INVENTORY_FILE = "hosts" // Define the inventory file path for Ansible
         EC2_PUBLIC_IP = '' // Initialize empty variable for EC2 IP
     }
 
@@ -43,10 +43,10 @@ pipeline {
         stage('Run Terraform to create EC2') {
             steps {
                 dir("${TERRAFORM_DIR}") {
-                    sh 'terraform init'
-                    sh 'terraform apply -auto-approve'
-
                     script {
+                        sh 'terraform init'
+                        sh 'terraform apply -auto-approve'
+                        
                         // Extract the EC2 public IP from the Terraform output
                         EC2_PUBLIC_IP = sh(script: 'terraform output -json ec2_public_ip | jq -r .value', returnStdout: true).trim()
                         // Create an inventory file for Ansible using the EC2 IP
@@ -83,3 +83,37 @@ pipeline {
 
         stage('Wait After Setup') {
             steps {
+                script {
+                    // Sleep for 60 seconds after setup
+                    sleep 60
+                }
+            }
+        }
+
+        stage('Create Kubernetes Namespace') {
+            steps {
+                script {
+                    // Create the Kubernetes namespace, ensuring it doesn't exist already
+                    sh "ssh -i ./nx-key.pem ubuntu@${EC2_PUBLIC_IP} 'kubectl create namespace ${K8S_NAMESPACE} || echo \"Namespace ${K8S_NAMESPACE} already exists\"'"
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                script {
+                    // Deploy the application to Kubernetes using deployment and service YAML files
+                    sh "ssh -i ./nx-key.pem ubuntu@${EC2_PUBLIC_IP} 'kubectl apply -f deployment.yaml -n ${K8S_NAMESPACE}'"
+                    sh "ssh -i ./nx-key.pem ubuntu@${EC2_PUBLIC_IP} 'kubectl apply -f services.yaml -n ${K8S_NAMESPACE}'"
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            // Clean up the workspace after the build
+            cleanWs()
+        }
+    }
+}
