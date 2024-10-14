@@ -2,34 +2,48 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_CREDENTIALS_ID = 'docker-hub-cred'
-        DOCKERHUB_USERNAME = 'ahmedsalama3014'
-        DOCKER_IMAGE = "${DOCKERHUB_USERNAME}/frontend-task:v1"
+        DOCKER_IMAGE = "ahmedsalama3014/frontend-task"
+        GIT_REPO = "git@github.com:Ahmed3019/my-cv-application.git"
+        K8S_NAMESPACE = "frontend-task"
+        TERRAFORM_DIR = "terraform"
+        INVENTORY_FILE = "hosts"  // Define the inventory file path
     }
 
     stages {
-        stage('Checkout') {
+        stage('Clone Repository') {
             steps {
-                checkout([$class: 'GitSCM', 
-                          branches: [[name: '*/main']], 
-                          userRemoteConfigs: [[url: 'https://github.com/Ahmed3019/my-cv-application.git']]])
+                git branch: 'main', url: "${GIT_REPO}"
+            }
+        }
+
+        stage('Run Terraform to create EC2') {
+            steps {
+                dir("${TERRAFORM_DIR}") {
+                    sh 'terraform init'
+                    sh 'terraform apply -auto-approve'
+
+                    // Capture the public IP of the EC2 instance
+                    script {
+                        def ip = sh(script: 'terraform output -json ec2_public_ip | jq -r .value', returnStdout: true).trim()
+                        writeFile file: "${INVENTORY_FILE}", text: "[ec2]\n${ip} ansible_user=ubuntu ansible_ssh_private_key_file=./nx-key.pem ansible_python_interpreter=/usr/bin/python3\n"
+                    }
+                }
+            }
+        }
+
+        stage('Install Ansible and Run Playbook') {
+            steps {
+                script {
+                    // Assuming you have Ansible installed
+                    ansiblePlaybook playbook: 'playbook.yml', inventory: "${INVENTORY_FILE}"
+                }
             }
         }
 
         stage('Build Docker Image') {
             steps {
                 script {
-                    sh 'docker build -t ${DOCKER_IMAGE} .'
-                }
-            }
-        }
-
-        stage('Docker Login') {
-            steps {
-                script {
-                    withCredentials([usernamePassword(credentialsId: DOCKER_CREDENTIALS_ID, usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
-                        sh 'echo $PASSWORD | docker login -u $USERNAME --password-stdin'
-                    }
+                    dockerImage = docker.build("${DOCKER_IMAGE}:latest")
                 }
             }
         }
@@ -37,18 +51,24 @@ pipeline {
         stage('Push Docker Image') {
             steps {
                 script {
-                    sh 'docker push ${DOCKER_IMAGE}'
+                    docker.withRegistry('https://index.docker.io/v1/', 'docker-credentials-id') {
+                        dockerImage.push()
+                    }
                 }
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                sh 'kubectl apply -f deployment.yaml'
+                sh 'kubectl apply -f services.yaml'
             }
         }
     }
 
     post {
-        success {
-            echo 'Build and push completed successfully!'
-        }
-        failure {
-            echo 'Build or push failed.'
+        always {
+            cleanWs()
         }
     }
 }

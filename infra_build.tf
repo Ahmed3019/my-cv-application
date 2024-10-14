@@ -63,6 +63,14 @@ resource "aws_security_group" "my_security_group" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # Allow port 80 access from anywhere 
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   # Allow HTTP access on port 8081 from anywhere
   ingress {
     from_port   = 8081
@@ -85,7 +93,6 @@ resource "aws_security_group" "my_security_group" {
 }
 
 # Create an EC2 instance
-# Create an EC2 instance
 resource "aws_instance" "my_instance" {
   ami                    = "ami-0866a3c8686eaeeba"  # Your specified AMI
   instance_type          = "t2.micro"
@@ -101,4 +108,9 @@ resource "aws_instance" "my_instance" {
 
   # Specify your key pair name for SSH access
   key_name = "nx-key"  # Use only the key pair name, no .pem extension
+}
+
+# Output the public IP of the EC2 instance
+output "instance_ip" {
+  value = aws_instance.my_instance.public_ip
 }
