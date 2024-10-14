@@ -1,0 +1,25 @@
+---
+- name: Prepare Environment on EC2
+  hosts: ec2
+  tasks:
+    - name: Create Kubernetes namespace
+      command: kubectl create namespace {{ namespace }}
+      vars:
+        namespace: frontend-task
+      ignore_errors: yes # Ignore errors if namespace already exists
+
+    - name: Create directory for frontend application
+      file:
+        path: /home/ubuntu/frontend-task
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+
+    - name: Clone project from GitHub
+      git:
+        repo: "{{ git_repo }}"
+        dest: /home/ubuntu/frontend-task/my-cv-application
+        version: main
+      vars:
+        git_repo: git@github.com:Ahmed3019/my-cv-application.git
