@@ -8,6 +8,8 @@ pipeline {
         TERRAFORM_DIR = "terraform" // Directory for Terraform files
         INVENTORY_FILE = "inventory" // Ansible inventory file
         EC2_PUBLIC_IP = '' // Initialize empty variable for EC2 IP
+        AWS_ACCESS_KEY_ID = credentials('aws-key-cred') // Access Key ID from Jenkins credentials
+        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-cred') // Secret Access Key from Jenkins credentials
     }
 
     stages {
@@ -43,26 +45,22 @@ pipeline {
         stage('Run Terraform to create EC2') {
             steps {
                 dir("${TERRAFORM_DIR}") {
-                    // Use withCredentials to securely handle AWS credentials
-                    withCredentials([string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
-                                     string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')]) {
-                        script {
-                            // Initialize Terraform
-                            sh 'terraform init'
+                    script {
+                        // Initialize Terraform
+                        sh 'terraform init'
 
-                            // Apply Terraform configuration with AWS credentials
-                            sh """
-                            terraform apply -auto-approve \
-                            -var="aws_access_key_id=${AWS_ACCESS_KEY_ID}" \
-                            -var="aws_secret_access_key=${AWS_SECRET_ACCESS_KEY}"
-                            """
+                        // Apply Terraform configuration with AWS credentials
+                        sh """
+                        terraform apply -auto-approve \
+                        -var="aws_access_key_id=${AWS_ACCESS_KEY_ID}" \
+                        -var="aws_secret_access_key=${AWS_SECRET_ACCESS_KEY}"
+                        """
 
-                            // Extract the EC2 public IP from the Terraform output
-                            EC2_PUBLIC_IP = sh(script: 'terraform output -json ec2_public_ip | jq -r .value', returnStdout: true).trim()
+                        // Extract the EC2 public IP from the Terraform output
+                        EC2_PUBLIC_IP = sh(script: 'terraform output -json ec2_public_ip | jq -r .value', returnStdout: true).trim()
 
-                            // Use the existing inventory file for Ansible
-                            writeFile file: "${INVENTORY_FILE}", text: "[ec2]\n${EC2_PUBLIC_IP} ansible_user=ubuntu ansible_ssh_private_key_file=./nx-key.pem ansible_python_interpreter=/usr/bin/python3\n"
-                        }
+                        // Use the existing inventory file for Ansible
+                        writeFile file: "${INVENTORY_FILE}", text: "[ec2]\n${EC2_PUBLIC_IP} ansible_user=ubuntu ansible_ssh_private_key_file=./nx-key.pem ansible_python_interpreter=/usr/bin/python3\n"
                     }
                 }
             }
