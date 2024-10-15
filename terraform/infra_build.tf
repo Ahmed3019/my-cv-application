@@ -1,5 +1,18 @@
+# Declare variables for AWS credentials
+variable "aws_access_key_id" {
+  description = "AWS Access Key ID"
+  type        = string
+}
+
+variable "aws_secret_access_key" {
+  description = "AWS Secret Access Key"
+  type        = string
+}
+
 provider "aws" {
-  region = "us-east-1"  # Change this to your preferred region
+  region                  = "us-east-1"  # Change this to your preferred region
+  access_key             = var.aws_access_key_id
+  secret_key             = var.aws_secret_access_key
 }
 
 # Create a VPC
