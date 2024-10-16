@@ -55,18 +55,9 @@ pipeline {
                         EC2_PUBLIC_IP = sh(script: 'terraform output instance_ip', returnStdout: true).trim()
                         echo "EC2 Public IP: ${EC2_PUBLIC_IP}"
 
-                        // Create Ansible inventory file
+                        // Create Ansible inventory file directly
                         writeFile file: "${INVENTORY_FILE}", text: "[ec2]\n${EC2_PUBLIC_IP} ansible_user=ubuntu ansible_ssh_private_key_file=./nx-key.pem ansible_python_interpreter=/usr/bin/python3\n"
                     }
-                }
-            }
-        }
-
-        stage('Install jq') {
-            steps {
-                script {
-                    // Install jq on the agent if not already installed
-                    sh 'apt-get update && apt-get install -y jq'
                 }
             }
         }
