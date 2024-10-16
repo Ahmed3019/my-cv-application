@@ -2,14 +2,14 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = "ahmedsalama3014/frontend-task"
-        GIT_REPO = "https://github.com/Ahmed3019/my-cv-application.git"
-        K8S_NAMESPACE = "frontend-task"
-        TERRAFORM_DIR = "terraform"
-        INVENTORY_FILE = "inventory"
-        EC2_PUBLIC_IP = '' 
-        AWS_ACCESS_KEY_ID = credentials('aws-key-cred') 
-        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-cred') 
+        DOCKER_IMAGE = "ahmedsalama3014/frontend-task" // Docker image name
+        GIT_REPO = "https://github.com/Ahmed3019/my-cv-application.git" // GitHub repository URL
+        K8S_NAMESPACE = "frontend-task" // Kubernetes namespace
+        TERRAFORM_DIR = "terraform" // Directory for Terraform files
+        INVENTORY_FILE = "inventory" // Ansible inventory file
+        EC2_PUBLIC_IP = '' // Initialize empty variable for EC2 IP
+        AWS_ACCESS_KEY_ID = credentials('aws-key-cred') // Access Key ID from Jenkins credentials
+        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-cred') // Secret Access Key from Jenkins credentials
     }
 
     stages {
@@ -39,53 +39,24 @@ pipeline {
             }
         }
 
-        stage('Initialize Terraform') {
+        stage('Run Terraform to Create EC2') {
             steps {
                 dir("${TERRAFORM_DIR}") {
                     script {
-                        // Initialize Terraform before planning/applying
+                        // Initialize and Apply Terraform
+                        sh 'terraform init'
                         sh """
-                        terraform init -input=false \
+                        terraform apply -auto-approve \
                         -var="aws_access_key_id=${AWS_ACCESS_KEY_ID}" \
                         -var="aws_secret_access_key=${AWS_SECRET_ACCESS_KEY}"
                         """
-                    }
-                }
-            }
-        }
 
-        stage('Check Terraform Changes') {
-            steps {
-                dir("${TERRAFORM_DIR}") {
-                    script {
-                        // Run terraform plan to check for changes
-                        def tfPlanOutput = sh(script: """
-                            terraform plan \
-                            -var="aws_access_key_id=${AWS_ACCESS_KEY_ID}" \
-                            -var="aws_secret_access_key=${AWS_SECRET_ACCESS_KEY}" \
-                            -no-color | tee plan.out
-                        """, returnStatus: true)
-                        
-                        // Check if there are any changes
-                        def planContainsChanges = sh(script: "grep 'No changes' plan.out", returnStatus: true)
+                        // Capture EC2 public IP from Terraform output using the correct output variable name
+                        EC2_PUBLIC_IP = sh(script: 'terraform output -json instance_ip | jq -r .value', returnStdout: true).trim()
+                        echo "EC2 Public IP: ${EC2_PUBLIC_IP}"
 
-                        if (planContainsChanges == 0) {
-                            echo "No infrastructure changes detected. Skipping Terraform apply."
-                            // If no changes are detected, fetch the existing instance IP
-                            EC2_PUBLIC_IP = sh(script: 'terraform output -json instance_ip | jq -r .value', returnStdout: true).trim()
-                            echo "Existing EC2 Public IP: ${EC2_PUBLIC_IP}"
-                        } else {
-                            echo "Changes detected. Applying Terraform."
-                            // Run terraform apply if changes are detected
-                            sh """
-                            terraform apply -auto-approve \
-                            -var="aws_access_key_id=${AWS_ACCESS_KEY_ID}" \
-                            -var="aws_secret_access_key=${AWS_SECRET_ACCESS_KEY}"
-                            """
-                            // Fetch the EC2 public IP after creating the infrastructure
-                            EC2_PUBLIC_IP = sh(script: 'terraform output -json instance_ip | jq -r .value', returnStdout: true).trim()
-                            echo "New EC2 Public IP: ${EC2_PUBLIC_IP}"
-                        }
+                        // Create Ansible inventory file
+                        writeFile file: "${INVENTORY_FILE}", text: "[ec2]\n${EC2_PUBLIC_IP} ansible_user=ubuntu ansible_ssh_private_key_file=./nx-key.pem ansible_python_interpreter=/usr/bin/python3\n"
                     }
                 }
             }
@@ -94,6 +65,7 @@ pipeline {
         stage('Install jq') {
             steps {
                 script {
+                    // Install jq on the agent if not already installed
                     sh 'sudo apt-get update && sudo apt-get install -y jq'
                 }
             }
@@ -102,7 +74,7 @@ pipeline {
         stage('Wait for EC2 to be Ready') {
             steps {
                 script {
-                    sleep 60
+                    sleep 60 // Wait for the EC2 instance to be fully initialized
                 }
             }
         }
@@ -110,11 +82,14 @@ pipeline {
         stage('Setup Environment on EC2') {
             steps {
                 script {
+                    // Ensure the nx-key.pem file has the correct permissions
                     sh 'chmod 600 ./nx-key.pem'
 
+                    // Copy setup script to EC2
                     sh "scp -i ./nx-key.pem setup_environment.sh ubuntu@${EC2_PUBLIC_IP}:/home/ubuntu/"
                     sh "scp -i ./nx-key.pem setup_environment.yml ubuntu@${EC2_PUBLIC_IP}:/home/ubuntu/"
 
+                    // Execute setup script on EC2
                     sh "ssh -i ./nx-key.pem ubuntu@${EC2_PUBLIC_IP} 'bash /home/ubuntu/setup_environment.sh'"
                 }
             }
@@ -140,7 +115,7 @@ pipeline {
 
     post {
         always {
-            cleanWs()
+            cleanWs() // Clean the workspace after the job is finished
         }
     }
 }
