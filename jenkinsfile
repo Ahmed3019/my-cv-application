@@ -10,6 +10,7 @@ pipeline {
         EC2_PUBLIC_IP = '' // Initialize empty variable for EC2 IP
         AWS_ACCESS_KEY_ID = credentials('aws-key-cred') // Access Key ID from Jenkins credentials
         AWS_SECRET_ACCESS_KEY = credentials('aws-secret-cred') // Secret Access Key from Jenkins credentials
+        EXPOSED_PORT = '8020' // Port you want to expose
     }
 
     stages {
@@ -57,8 +58,9 @@ pipeline {
                                 echo "No changes to infrastructure, skipping apply."
                             fi
                         '''
-                        // Capture the public IP of the EC2 instance (modify based on your Terraform output)
-                        EC2_PUBLIC_IP = sh(script: "terraform output -raw public_ip", returnStdout: true).trim()
+                        // Capture the public IP of the EC2 instance
+                        EC2_PUBLIC_IP = sh(script: "terraform output -raw instance_ip", returnStdout: true).trim()
+                        echo "EC2 Public IP: ${EC2_PUBLIC_IP}" // Log the captured IP for debugging
                     }
                 }
             }
@@ -84,18 +86,8 @@ pipeline {
     post {
         always {
             script {
-                def exposedPort = '8020' // Port you want to expose
-                def appUrl = "http://${EC2_PUBLIC_IP}:${exposedPort}"
-                def subject = "${EC2_PUBLIC_IP}"
-                def body = "Hi from Jenkins, the URL of the frontend app is: ${appUrl}"
-
-                // Echo the URL
-                echo "Frontend application URL: ${appUrl}"
-
-                // Send email
-                mail to: 'ahmedsalama3014@gmail.com',
-                     subject: subject,
-                     body: body
+                def appUrl = "http://${EC2_PUBLIC_IP}:${EXPOSED_PORT}" // Construct the URL with IP and exposed port
+                echo "Frontend application URL: ${appUrl}" // Log the URL
             }
         }
     }
