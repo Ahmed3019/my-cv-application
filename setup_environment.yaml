@@ -2,11 +2,11 @@
 - name: Prepare Environment on EC2
   hosts: ec2
   tasks:
-    - name: Create Kubernetes namespace
-      command: kubectl create namespace {{ namespace }}
-      vars:
-        namespace: frontend-task
-      ignore_errors: yes # Ignore errors if namespace already exists
+    - name: Install Git
+      apt:
+        name: git
+        state: present
+      become: yes
 
     - name: Create directory for frontend application
       file:
@@ -23,3 +23,30 @@
         version: main
       vars:
         git_repo: git@github.com:Ahmed3019/my-cv-application.git
+
+    - name: Install Docker
+      apt:
+        name: docker.io
+        state: present
+      become: yes
+
+    - name: Install Docker Compose
+      apt:
+        name: docker-compose
+        state: present
+      become: yes
+
+    - name: Pull latest Docker image
+      docker_image:
+        name: ahmedsalama3014/frontend-task
+        tag: latest
+        source: pull
+
+    - name: Run Docker container
+      docker_container:
+        name: frontend-task
+        image: ahmedsalama3014/frontend-task:latest
+        state: started
+        restart_policy: always
+        published_ports:
+          - "8020:80"  # Replace 80 with the internal port if different

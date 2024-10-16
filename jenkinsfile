@@ -57,6 +57,8 @@ pipeline {
                                 echo "No changes to infrastructure, skipping apply."
                             fi
                         '''
+                        // Capture the public IP of the EC2 instance (modify based on your Terraform output)
+                        EC2_PUBLIC_IP = sh(script: "terraform output -raw public_ip", returnStdout: true).trim()
                     }
                 }
             }
@@ -77,21 +79,23 @@ pipeline {
                 }
             }
         }
+    }
 
-        stage('Create Kubernetes Namespace') {
-            steps {
-                script {
-                    sh "ssh -i ./nx-key.pem ubuntu@${EC2_PUBLIC_IP} 'kubectl create namespace ${K8S_NAMESPACE} || echo \"Namespace ${K8S_NAMESPACE} already exists\"'"
-                }
-            }
-        }
+    post {
+        always {
+            script {
+                def exposedPort = '8020' // Port you want to expose
+                def appUrl = "http://${EC2_PUBLIC_IP}:${exposedPort}"
+                def subject = "${EC2_PUBLIC_IP}"
+                def body = "Hi from Jenkins, the URL of the frontend app is: ${appUrl}"
 
-        stage('Deploy to Kubernetes') {
-            steps {
-                script {
-                    sh "ssh -i ./nx-key.pem ubuntu@${EC2_PUBLIC_IP} 'kubectl apply -f /home/ubuntu/k8s/deployment.yaml -n ${K8S_NAMESPACE}'"
-                    sh "ssh -i ./nx-key.pem ubuntu@${EC2_PUBLIC_IP} 'kubectl apply -f /home/ubuntu/k8s/services.yaml -n ${K8S_NAMESPACE}'"
-                }
+                // Echo the URL
+                echo "Frontend application URL: ${appUrl}"
+
+                // Send email
+                mail to: 'ahmedsalama3014@gmail.com',
+                     subject: subject,
+                     body: body
             }
         }
     }
