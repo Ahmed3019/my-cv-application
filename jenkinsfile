@@ -58,11 +58,11 @@ pipeline {
                             fi
 
                             # Capture EC2 public IP from Terraform output
-                            EC2_PUBLIC_IP = sh(script: 'terraform output instance_ip', returnStdout: true).trim()
-                            echo "EC2 Public IP: ${EC2_PUBLIC_IP}"
+                            #EC2_PUBLIC_IP = sh(script: 'terraform output instance_ip', returnStdout: true).trim()
+                            #echo "EC2 Public IP: ${EC2_PUBLIC_IP}"
 
                             # Create Ansible inventory file directly
-                            writeFile file: "${INVENTORY_FILE}", text: "[ec2]\n${EC2_PUBLIC_IP} ansible_user=ubuntu ansible_ssh_private_key_file=./nx-key.pem ansible_python_interpreter=/usr/bin/python3\n"
+                            #writeFile file: "${INVENTORY_FILE}", text: "[ec2]\n${EC2_PUBLIC_IP} ansible_user=ubuntu ansible_ssh_private_key_file=./nx-key.pem ansible_python_interpreter=/usr/bin/python3\n"
                         '''
                     }
                 }
@@ -100,12 +100,6 @@ pipeline {
                     sh "ssh -i ./nx-key.pem ubuntu@${EC2_PUBLIC_IP} 'kubectl apply -f /home/ubuntu/k8s/services.yaml -n ${K8S_NAMESPACE}'"
                 }
             }
-        }
-    }
-
-    post {
-        always {
-            cleanWs() // Clean the workspace after the job is finished
         }
     }
 }

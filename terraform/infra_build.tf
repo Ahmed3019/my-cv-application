@@ -127,3 +127,13 @@
   output "instance_ip" {
     value = aws_instance.my_instance.public_ip
   }
+
+  # Create the inventory file in the main directory
+resource "null_resource" "generate_inventory" {
+  provisioner "local-exec" {
+    command = <<EOF
+      echo "[ec2]" > /var/jenkins_home/workspace/final-project-pipeline/inventory
+      echo "ec2-instance ansible_host=${aws_instance.my_instance.public_ip} ansible_user=ubuntu ansible_ssh_private_key_file=/var/jenkins_home/workspace/final-project-pipeline/nx-key.pem ansible_ssh_common_args='-o StrictHostKeyChecking=no'" >> /var/jenkins_home/workspace/final-project-pipeline/inventory
+EOF
+  }
+}
