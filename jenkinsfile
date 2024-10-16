@@ -73,7 +73,7 @@ pipeline {
 
                     // Run the Ansible playbook from the local machine targeting the EC2 instance
                     sh '''
-                        ansible-playbook -i ${INVENTORY_FILE} setup_environment.yml \
+                        ansible-playbook -i ${INVENTORY_FILE} setup_environment.yaml \
                         --private-key ./nx-key.pem \
                         -e "ansible_ssh_common_args='-o StrictHostKeyChecking=no'"
                     '''
