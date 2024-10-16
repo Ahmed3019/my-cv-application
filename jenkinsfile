@@ -2,14 +2,14 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = "ahmedsalama3014/frontend-task" // Docker image name
-        GIT_REPO = "https://github.com/Ahmed3019/my-cv-application.git" // GitHub repository URL
-        K8S_NAMESPACE = "frontend-task" // Kubernetes namespace
-        TERRAFORM_DIR = "terraform" // Directory for Terraform files
-        INVENTORY_FILE = "inventory" // Ansible inventory file
-        EC2_PUBLIC_IP = '' // Initialize empty variable for EC2 IP
-        AWS_ACCESS_KEY_ID = credentials('aws-key-cred') // Access Key ID from Jenkins credentials
-        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-cred') // Secret Access Key from Jenkins credentials
+        DOCKER_IMAGE = "ahmedsalama3014/frontend-task"
+        GIT_REPO = "https://github.com/Ahmed3019/my-cv-application.git"
+        K8S_NAMESPACE = "frontend-task"
+        TERRAFORM_DIR = "terraform"
+        INVENTORY_FILE = "inventory"
+        EC2_PUBLIC_IP = '' 
+        AWS_ACCESS_KEY_ID = credentials('aws-key-cred') 
+        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-cred') 
     }
 
     stages {
@@ -34,6 +34,21 @@ pipeline {
                 script {
                     docker.withRegistry('https://index.docker.io/v1/', 'docker-hub-cred') {
                         dockerImage.push()
+                    }
+                }
+            }
+        }
+
+        stage('Initialize Terraform') {
+            steps {
+                dir("${TERRAFORM_DIR}") {
+                    script {
+                        // Initialize Terraform before planning/applying
+                        sh """
+                        terraform init -input=false \
+                        -var="aws_access_key_id=${AWS_ACCESS_KEY_ID}" \
+                        -var="aws_secret_access_key=${AWS_SECRET_ACCESS_KEY}"
+                        """
                     }
                 }
             }
@@ -87,7 +102,7 @@ pipeline {
         stage('Wait for EC2 to be Ready') {
             steps {
                 script {
-                    sleep 60 // Wait for the EC2 instance to be fully initialized
+                    sleep 60
                 }
             }
         }
@@ -95,14 +110,11 @@ pipeline {
         stage('Setup Environment on EC2') {
             steps {
                 script {
-                    // Ensure the nx-key.pem file has the correct permissions
                     sh 'chmod 600 ./nx-key.pem'
 
-                    // Copy setup script to EC2
                     sh "scp -i ./nx-key.pem setup_environment.sh ubuntu@${EC2_PUBLIC_IP}:/home/ubuntu/"
                     sh "scp -i ./nx-key.pem setup_environment.yml ubuntu@${EC2_PUBLIC_IP}:/home/ubuntu/"
 
-                    // Execute setup script on EC2
                     sh "ssh -i ./nx-key.pem ubuntu@${EC2_PUBLIC_IP} 'bash /home/ubuntu/setup_environment.sh'"
                 }
             }
@@ -128,7 +140,7 @@ pipeline {
 
     post {
         always {
-            cleanWs() // Clean the workspace after the job is finished
+            cleanWs()
         }
     }
 }
