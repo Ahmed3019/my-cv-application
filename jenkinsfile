@@ -10,7 +10,6 @@ pipeline {
         EC2_PUBLIC_IP = '' // Initialize empty variable for EC2 IP
         AWS_ACCESS_KEY_ID = credentials('aws-key-cred') // Access Key ID from Jenkins credentials
         AWS_SECRET_ACCESS_KEY = credentials('aws-secret-cred') // Secret Access Key from Jenkins credentials
-        EXPOSED_PORT = '8020' // Port you want to expose
     }
 
     stages {
@@ -72,12 +71,12 @@ pipeline {
                     // Ensure the nx-key.pem file has the correct permissions
                     sh 'chmod 600 ./nx-key.pem'
 
-                    // Copy setup script to EC2
-                    sh "scp -i ./nx-key.pem setup_environment.sh ubuntu@${EC2_PUBLIC_IP}:/home/ubuntu/"
-                    sh "scp -i ./nx-key.pem setup_environment.yml ubuntu@${EC2_PUBLIC_IP}:/home/ubuntu/"
+                    // Copy setup script to EC2, disabling host key checking
+                    sh "scp -o StrictHostKeyChecking=no -i ./nx-key.pem setup_environment.sh ubuntu@${EC2_PUBLIC_IP}:/home/ubuntu/"
+                    sh "scp -o StrictHostKeyChecking=no -i ./nx-key.pem setup_environment.yml ubuntu@${EC2_PUBLIC_IP}:/home/ubuntu/"
 
-                    // Execute setup script on EC2
-                    sh "ssh -i ./nx-key.pem ubuntu@${EC2_PUBLIC_IP} 'bash /home/ubuntu/setup_environment.sh'"
+                    // Execute setup script on EC2, disabling host key checking
+                    sh "ssh -o StrictHostKeyChecking=no -i ./nx-key.pem ubuntu@${EC2_PUBLIC_IP} 'bash /home/ubuntu/setup_environment.sh'"
                 }
             }
         }
@@ -86,8 +85,12 @@ pipeline {
     post {
         always {
             script {
-                def appUrl = "http://${EC2_PUBLIC_IP}:${EXPOSED_PORT}" // Construct the URL with IP and exposed port
-                echo "Frontend application URL: ${appUrl}" // Log the URL
+                def exposedPort = '8020' // Port you want to expose
+                def appUrl = "http://${EC2_PUBLIC_IP}:${exposedPort}"
+                echo "Frontend application URL: ${appUrl}"
+
+                // Log the IP and port as part of the pipeline summary
+                echo "Pipeline finished. EC2 Public IP: ${EC2_PUBLIC_IP}, Exposed Port: ${exposedPort}, Application URL: ${appUrl}"
             }
         }
     }
