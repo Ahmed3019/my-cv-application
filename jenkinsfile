@@ -65,18 +65,18 @@ pipeline {
             }
         }
 
-        stage('Setup Environment on EC2') {
+        stage('Setup Environment on EC2 using Ansible') {
             steps {
                 script {
                     // Ensure the nx-key.pem file has the correct permissions
                     sh 'chmod 600 ./nx-key.pem'
 
-                    // Copy setup script to EC2, disabling host key checking
-                    sh "scp -o StrictHostKeyChecking=no -i ./nx-key.pem setup_environment.sh ubuntu@${EC2_PUBLIC_IP}:/home/ubuntu/"
-                    sh "scp -o StrictHostKeyChecking=no -i ./nx-key.pem setup_environment.yml ubuntu@${EC2_PUBLIC_IP}:/home/ubuntu/"
-
-                    // Execute setup script on EC2, disabling host key checking
-                    sh "ssh -o StrictHostKeyChecking=no -i ./nx-key.pem ubuntu@${EC2_PUBLIC_IP} 'bash /home/ubuntu/setup_environment.sh'"
+                    // Run the Ansible playbook from the local machine targeting the EC2 instance
+                    sh '''
+                        ansible-playbook -i ${INVENTORY_FILE} setup_environment.yml \
+                        --private-key ./nx-key.pem \
+                        -e "ansible_ssh_common_args='-o StrictHostKeyChecking=no'"
+                    '''
                 }
             }
         }
@@ -87,9 +87,6 @@ pipeline {
             script {
                 def exposedPort = '8020' // Port you want to expose
                 def appUrl = "http://${EC2_PUBLIC_IP}:${exposedPort}"
-                echo "Frontend application URL: ${appUrl}"
-
-                // Log the IP and port as part of the pipeline summary
                 echo "Pipeline finished. EC2 Public IP: ${EC2_PUBLIC_IP}, Exposed Port: ${exposedPort}, Application URL: ${appUrl}"
             }
         }

@@ -24,6 +24,10 @@
       vars:
         git_repo: git@github.com:Ahmed3019/my-cv-application.git
 
+    - name: Wait for 60 seconds after cloning the project
+      pause:
+        seconds: 60
+
     - name: Install Docker
       apt:
         name: docker.io
@@ -42,6 +46,10 @@
         tag: latest
         source: pull
 
+    - name: Wait for 60 seconds after pulling Docker image
+      pause:
+        seconds: 60
+
     - name: Run Docker container
       docker_container:
         name: frontend-task
@@ -50,3 +58,10 @@
         restart_policy: always
         published_ports:
           - "8020:80"  # Replace 80 with the internal port if different
+
+    - name: Print message when container is running
+      debug:
+        msg: "Container '{{ docker_image_name }}' is running as '{{ docker_container_name }}'"
+      vars:
+        docker_image_name: "ahmedsalama3014/frontend-task:latest"
+        docker_container_name: "frontend-task"
