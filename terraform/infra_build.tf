@@ -105,7 +105,7 @@
     }
   }
 
-  # Create an EC2 instance
+  # Create an EC2 instance  
   resource "aws_instance" "my_instance" {
     ami                    = "ami-0866a3c8686eaeeba"  # Your specified AMI
     instance_type          = "t2.micro"
@@ -137,3 +137,4 @@ resource "null_resource" "generate_inventory" {
 EOF
   }
 }
+
