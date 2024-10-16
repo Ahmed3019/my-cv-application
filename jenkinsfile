@@ -43,29 +43,28 @@ pipeline {
             steps {
                 dir("${TERRAFORM_DIR}") {
                     script {
-                        // Initialize and Apply Terraform
-                        sh 'terraform init'
-                        sh """
-                        terraform apply -auto-approve \
-                        -var="aws_access_key_id=${AWS_ACCESS_KEY_ID}" \
-                        -var="aws_secret_access_key=${AWS_SECRET_ACCESS_KEY}"
-                        """
+                        sh '''
+                            terraform init
+                            terraform plan -out=tfplan \
+                                -var="aws_access_key_id=${AWS_ACCESS_KEY_ID}" \
+                                -var="aws_secret_access_key=${AWS_SECRET_ACCESS_KEY}"
 
-                        // Capture EC2 public IP from Terraform output
-                        EC2_PUBLIC_IP = sh(script: 'terraform output instance_ip', returnStdout: true).trim()
-                        echo "EC2 Public IP: ${EC2_PUBLIC_IP}"
+                            # Check if there are changes to be applied
+                            if terraform show -json tfplan | jq .resource_changes | grep -q '"change"'; then
+                                echo "Changes detected, applying infrastructure changes..."
+                                terraform apply -auto-approve tfplan
+                            else
+                                echo "No changes to infrastructure, skipping apply."
+                            fi
 
-                        // Create Ansible inventory file directly
-                        writeFile file: "${INVENTORY_FILE}", text: "[ec2]\n${EC2_PUBLIC_IP} ansible_user=ubuntu ansible_ssh_private_key_file=./nx-key.pem ansible_python_interpreter=/usr/bin/python3\n"
+                            # Capture EC2 public IP from Terraform output
+                            EC2_PUBLIC_IP = sh(script: 'terraform output instance_ip', returnStdout: true).trim()
+                            echo "EC2 Public IP: ${EC2_PUBLIC_IP}"
+
+                            # Create Ansible inventory file directly
+                            writeFile file: "${INVENTORY_FILE}", text: "[ec2]\n${EC2_PUBLIC_IP} ansible_user=ubuntu ansible_ssh_private_key_file=./nx-key.pem ansible_python_interpreter=/usr/bin/python3\n"
+                        '''
                     }
-                }
-            }
-        }
-
-        stage('Wait for EC2 to be Ready') {
-            steps {
-                script {
-                    sleep 60 // Wait for the EC2 instance to be fully initialized
                 }
             }
         }
