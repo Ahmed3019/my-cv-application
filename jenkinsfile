@@ -51,8 +51,8 @@ pipeline {
                         -var="aws_secret_access_key=${AWS_SECRET_ACCESS_KEY}"
                         """
 
-                        // Capture EC2 public IP from Terraform output using the correct output variable name
-                        EC2_PUBLIC_IP = sh(script: 'terraform output -json instance_ip | jq -r .value', returnStdout: true).trim()
+                        // Capture EC2 public IP from Terraform output
+                        EC2_PUBLIC_IP = sh(script: 'terraform output instance_ip', returnStdout: true).trim()
                         echo "EC2 Public IP: ${EC2_PUBLIC_IP}"
 
                         // Create Ansible inventory file
