@@ -1,12 +1,19 @@
 ---
 - name: Prepare Environment on EC2
-  hosts: frontend  # Changed from 'ec2' to 'frontend'
+  hosts: frontend  # Ensure this matches the inventory group
   tasks:
     - name: Install Git
       apt:
         name: git
         state: present
       become: yes
+
+    - name: Add GitHub to known hosts
+      shell: echo "github.com $(ssh-keyscan -H github.com)" >> /home/ubuntu/.ssh/known_hosts
+      args:
+        executable: /bin/bash
+      become: yes
+      become_user: ubuntu
 
     - name: Create directory for frontend application
       file:
