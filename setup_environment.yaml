@@ -8,13 +8,6 @@
         state: present
       become: yes
 
-    - name: Add GitHub to known hosts
-      shell: echo "github.com $(ssh-keyscan -H github.com)" >> /home/ubuntu/.ssh/known_hosts
-      args:
-        executable: /bin/bash
-      become: yes
-      become_user: ubuntu
-
     - name: Create directory for frontend application
       file:
         path: /home/ubuntu/frontend-task
@@ -29,7 +22,7 @@
         dest: /home/ubuntu/frontend-task/my-cv-application
         version: main
       vars:
-        git_repo: git@github.com:Ahmed3019/my-cv-application.git
+        git_repo: https://github.com/Ahmed3019/my-cv-application.git
 
     - name: Wait for 60 seconds after cloning the project
       pause:
