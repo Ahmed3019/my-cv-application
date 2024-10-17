@@ -1,12 +1,12 @@
 ---
 - name: Prepare Environment on EC2
-  hosts: frontend  # Ensure this matches the inventory group
+  hosts: frontend
+  become: yes  # This ensures all tasks run with elevated privileges
   tasks:
     - name: Install Git
       apt:
         name: git
         state: present
-      become: yes
 
     - name: Create directory for frontend application
       file:
@@ -18,36 +18,36 @@
 
     - name: Clone project from GitHub
       git:
-        repo: "{{ git_repo }}"
+        repo: "https://github.com/Ahmed3019/my-cv-application.git"
         dest: /home/ubuntu/frontend-task/my-cv-application
         version: main
-      vars:
-        git_repo: https://github.com/Ahmed3019/my-cv-application.git
 
     - name: Install Docker
       apt:
         name: docker.io
         state: present
-      become: yes
 
     - name: Install Docker Compose
       apt:
         name: docker-compose
         state: present
-      become: yes
 
     - name: Add user to the Docker group
       user:
         name: ubuntu
         group: docker
         append: yes
-      become: yes
 
     - name: Restart Docker service
       service:
         name: docker
         state: restarted
-      become: yes
+
+    - name: Wait for Docker to be ready
+      wait_for:
+        port: 2375  # Default Docker port for the API
+        state: started
+        timeout: 30
 
     - name: Pull latest Docker image
       docker_image:
@@ -62,7 +62,7 @@
         state: started
         restart_policy: always
         published_ports:
-          - "8020:80"  # Replace 80 with the internal port if different
+          - "8020:80"
 
     - name: Print message when container is running
       debug:
