@@ -24,10 +24,6 @@
       vars:
         git_repo: https://github.com/Ahmed3019/my-cv-application.git
 
-    - name: Wait for 60 seconds after cloning the project
-      pause:
-        seconds: 60
-
     - name: Install Docker
       apt:
         name: docker.io
@@ -40,15 +36,24 @@
         state: present
       become: yes
 
+    - name: Add user to the Docker group
+      user:
+        name: ubuntu
+        group: docker
+        append: yes
+      become: yes
+
+    - name: Restart Docker service
+      service:
+        name: docker
+        state: restarted
+      become: yes
+
     - name: Pull latest Docker image
       docker_image:
         name: ahmedsalama3014/frontend-task
         tag: latest
         source: pull
-
-    - name: Wait for 60 seconds after pulling Docker image
-      pause:
-        seconds: 60
 
     - name: Run Docker container
       docker_container:
