@@ -73,13 +73,13 @@ pipeline {
             steps {
                 script {
                     // Ensure the nx-key.pem file has the correct permissions
-                    sh 'bash -c "chmod 600 ./nx-key.pem"'
+                    sh 'chmod 600 nx-key.pem'
 
                     // Run the Ansible playbook from the local machine targeting the EC2 instance
                     sh '''
-                        bash -c "ansible-playbook -i ${env.WORKSPACE}/${INVENTORY_FILE} setup_environment.yaml \
+                        ansible-playbook -i ${WORKSPACE}/${INVENTORY_FILE} setup_environment.yaml \
                         --private-key ./nx-key.pem \
-                        -e 'ansible_ssh_common_args=\"-o StrictHostKeyChecking=no\"'"
+                        -e "ansible_ssh_common_args='-o StrictHostKeyChecking=no'"
                     '''
                 }
             }
