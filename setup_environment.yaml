@@ -43,11 +43,9 @@
         name: docker
         state: restarted
 
-    - name: Wait for Docker to be ready
-      wait_for:
-        port: 2375  # Default Docker port for the API
-        state: started
-        timeout: 30
+    - name: Sleep for 30 seconds
+      pause:
+        seconds: 30
 
     - name: Pull latest Docker image
       docker_image:
