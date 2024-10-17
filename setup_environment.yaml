@@ -1,6 +1,6 @@
 ---
 - name: Prepare Environment on EC2
-  hosts: ec2
+  hosts: frontend  # Changed from 'ec2' to 'frontend'
   tasks:
     - name: Install Git
       apt:
