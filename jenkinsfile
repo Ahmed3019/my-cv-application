@@ -61,9 +61,9 @@ pipeline {
                         EC2_PUBLIC_IP = sh(script: "terraform output -raw instance_ip", returnStdout: true).trim()
                         echo "EC2 Public IP: ${EC2_PUBLIC_IP}" // Log the captured IP for debugging
                         
-                        // Create the Ansible inventory file
-                        writeFile file: "${INVENTORY_FILE}", text: "[frontend]\n${EC2_PUBLIC_IP} ansible_user=ubuntu ansible_ssh_private_key_file=./nx-key.pem"
-                        echo "Ansible inventory file created at: ${INVENTORY_FILE}"
+                        // Create the Ansible inventory file in the Jenkins workspace
+                        writeFile file: "${env.WORKSPACE}/${INVENTORY_FILE}", text: "[frontend]\n${EC2_PUBLIC_IP} ansible_user=ubuntu ansible_ssh_private_key_file=./nx-key.pem"
+                        echo "Ansible inventory file created at: ${env.WORKSPACE}/${INVENTORY_FILE}"
                     }
                 }
             }
@@ -77,7 +77,7 @@ pipeline {
 
                     // Run the Ansible playbook from the local machine targeting the EC2 instance
                     sh '''
-                        ansible-playbook -i ${INVENTORY_FILE} setup_environment.yaml \
+                        ansible-playbook -i ${env.WORKSPACE}/${INVENTORY_FILE} setup_environment.yaml \
                         --private-key ./nx-key.pem \
                         -e "ansible_ssh_common_args='-o StrictHostKeyChecking=no'"
                     '''
