@@ -1,118 +1,140 @@
-# My CV Application
+# **My CV Application - DevOps Project**
 
-This project is a Frontendweb application designed to display a user's CV. It is containerized using Docker and can be deployed on Kubernetes. The project demonstrates the use of Docker for building images and running containers, and it is set up to work seamlessly with Kubernetes for deployment.
+This project is a simple web application designed to demonstrate a complete DevOps pipeline that integrates tools such as **Git**, **Jenkins**, **Docker**, **Terraform**, **Ansible**, **AWS EC2**, and **Kubernetes (Minikube)**. The pipeline automates the deployment of the application and can be run both on AWS EC2 and locally with Kubernetes.
 
-## Project Structure
+## **Project Architecture**
 
-```
-My-cv-app/
-│
-├── app/
-│   ├── templates/
-│   │   └── index.html  # HTML template for displaying the CV
-│   ├── static/
-│   │   └── css/
-│   │       └── styles.css  # CSS for styling the CV
-│
-├── Dockerfile  # Dockerfile for building the Docker image
-└── docker-compose.yml  # Docker Compose file for running the application
-```
+The project architecture demonstrates the full cycle of continuous integration and deployment, utilizing modern DevOps tools and methodologies.
 
-## Prerequisites
+---
 
-- Docker
-- Docker Compose
-- Kubernetes (Minikube or any other cluster)
-- Ansible (for automation)
+## **Tools and Technologies Used**
 
-## Getting Started
+- **Git**: Version control for source code.
+- **Jenkins**: CI/CD automation for managing pipeline execution.
+- **Docker**: Containerization of the application.
+- **Docker Hub**: Centralized repository for Docker images.
+- **Terraform**: Infrastructure as Code (IaC) tool for provisioning AWS resources.
+- **Ansible**: Configuration management for setting up the environment on AWS EC2.
+- **AWS EC2**: Hosting the application on a cloud-based virtual machine.
+- **Kubernetes (Minikube)**: Local environment for deploying and testing the application in Kubernetes.
 
-1. **Clone the Repository**
+---
 
-   Clone the repository to your local machine:
+## **Pipeline Stages**
 
-   ```bash
-   git clone https://github.com/Ahmed3019/My-cv-app.git
-   cd My-cv-app
-   ```
+1. **Clone GitHub Repository**: Clones the project repository from GitHub.
+2. **Check for Changes in GitHub**: Detects changes in the repository and skips unnecessary builds.
+3. **Check if Docker Image Exists on Docker Hub**: Skips building if the Docker image is already up-to-date.
+4. **Build Docker Image**: Builds the Docker image of the application if there are changes.
+5. **Push Docker Image**: Pushes the built image to Docker Hub.
+6. **Run Terraform to Provision EC2**: Uses Terraform to create an EC2 instance on AWS.
+7. **Setup Environment on EC2 using Ansible**: Configures the EC2 instance with necessary packages and dependencies.
 
-2. **Build the Docker Image**
+---
 
-   Build the Docker image using the following command:
+## **Steps to Set Up and Run the Pipeline**
 
-   ```bash
-   docker build -t ahmedsalama3014/frontend-task:v1 .
-   ```
+### **Prerequisites**
 
-3. **Run the Docker Container**
+Ensure the following are installed on your system:
 
-   You can run the Docker container using:
+- **Docker**
+- **Jenkins** with required plugins (Git, Docker, Terraform, Ansible)
+- **AWS Account** and set up credentials in Jenkins
+- **Terraform** and **Ansible**
+- **Minikube** for Kubernetes local setup (optional, for running locally)
 
-   ```bash
-   docker run -d --name frontend-task -p 8020:80 ahmedsalama3014/frontend-task:v1
-   ```
+### **Jenkins Pipeline Setup**
 
-4. **Push the Docker Image to Docker Hub**
+1. **Clone the GitHub Repository**:
 
-   Push the Docker image to your Docker Hub account:
+    ```bash
+    git clone https://github.com/Ahmed3019/my-cv-application.git
+    cd my-cv-application
+    ```
 
-   ```bash
-   docker push ahmedsalama3014/frontend-task:v1
-   ```
+2. **Jenkins Setup**:
+    - Add your AWS Access Key and Secret Key to Jenkins credentials.
+    - Add your GitHub and Docker Hub credentials to Jenkins.
 
-## Deployment on Kubernetes
+3. **Configure the Jenkinsfile**:
 
-To deploy the application on a Kubernetes cluster, you can use the following commands:
+    The Jenkins pipeline consists of the following stages:
+    - **Clone GitHub Repo**: Clones the project repository.
+    - **Check for Changes in GitHub**: Skips the build if no changes are detected.
+    - **Check if Docker Image Exists**: Skips the build and push if the image already exists.
+    - **Build and Push Docker Image**: Builds the Docker image and pushes it to Docker Hub.
+    - **Run Terraform**: Uses Terraform to provision the EC2 instance.
+    - **Setup EC2 using Ansible**: Runs an Ansible playbook to set up the application environment on the EC2 instance.
+
+4. **Run the Pipeline**:
+
+    Execute the Jenkins pipeline. Ensure that each stage completes successfully.
+
+---
+
+## **Running the Application Locally with Kubernetes (Minikube)**
+
+If you prefer to run the application locally using Kubernetes, follow these steps:
+
+1. **Install Minikube**:
+
+    Follow the official [Minikube Installation Guide](https://minikube.sigs.k8s.io/docs/start/) to install and set up Minikube.
+
+2. **Start Minikube**:
+
+    Run the following command to start Minikube with sufficient resources:
+
+    ```bash
+    minikube start --cpus=2 --memory=4096
+    ```
+
+3. **Deploy the Application to Kubernetes**:
+
+    Ensure Minikube is running, then apply the Kubernetes configurations for the deployment and service:
+
+    ```bash
+    kubectl create namespace frontend-task
+    kubectl apply -f deployment.yaml -n frontend-task
+    kubectl apply -f service.yaml -n frontend-task
+    ```
+
+4. **Access the Application**:
+
+    Retrieve the Minikube service URL:
+
+    ```bash
+    minikube service frontend-task --url -n frontend-task
+    ```
+
+    Use the URL to access your application.
+
+---
+
+## **Project File Structure**
 
 ```bash
-kubectl apply -f k8s/deployment.yaml
-kubectl apply -f k8s/service.yaml
-```
-
-Make sure to replace the image name in the deployment YAML file with `ahmedsalama3014/frontend-task:v1`.
-
-## Ansible Playbook for Automation
-
-The following Ansible playbook can be used to automate the Docker build and deployment process:
-
-```yaml
----
-- name: "Automate Docker Build using Ansible"
-  hosts: localhost
-  tasks:
-    - name: Stop running container
-      command: docker stop frontend-task
-      ignore_errors: yes
-
-    - name: Remove stopped container
-      command: docker rm frontend-task
-      ignore_errors: yes
-
-    - name: Remove used image
-      command: docker rmi ahmedsalama3014/frontend-task:v1
-      ignore_errors: yes
-
-    - name: Build new image
-      command: docker build -t ahmedsalama3014/frontend-task:v1 .
-      args:
-        chdir: /home/control/depi-study/argoCD/My-cv-app
-
-    - name: Push docker image
-      command: docker push ahmedsalama3014/frontend-task:v1
-
-    - name: Run new container
-      command: docker run -d --name frontend-task -p 8020:80 ahmedsalama3014/frontend-task:v1
-```
-
-### Usage
-
-1. Save the above playbook as `docker_build.yml`.
-2. Run the playbook using:
-
-   ```bash
-   ansible-playbook docker_build.yml
-   ```
-
-## Conclusion
-
-This Frontendweb application serves as a simple CV display, showcasing the integration of Docker, Kubernetes, and Ansible for modern application deployment. For further improvements, consider adding features like user authentication or a database for storing multiple CVs.
+my-cv-application/
+│
+├── code/
+│   ├── templates/
+│   │   └── index.html        # HTML file for the application
+│   ├── static/
+│   │   └── css/
+│   │       └── styles.css     # CSS for styling the web application
+│
+├── Dockerfile                 # Dockerfile to build the application image
+├── jenkinsfile                # Jenkins pipeline configuration
+├── nx-key.pem                 # Key pair for AWS EC2 instance access
+├── terraform/
+│   ├── main.tf                # Terraform file for provisioning AWS EC2
+│   ├── variables.tf           # Terraform variables configuration
+│   ├── outputs.tf             # Terraform output for EC2 public IP
+│
+├── k8s/
+│   ├── deployment.yaml        # Kubernetes Deployment manifest
+│   └── service.yaml           # Kubernetes Service manifest
+├── setup_environment.sh       # Script to set up EC2 instance
+├── setup_environment.yaml     # Ansible playbook to automate setup on EC2
+├── README.md                  # Project documentation (this file)
