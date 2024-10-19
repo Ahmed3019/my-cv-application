@@ -84,6 +84,29 @@ pipeline {
                 }
             }
         }
+
+        stage('Run Minikube and Deploy to Kubernetes') {
+            steps {
+                script {
+                    // Start Minikube
+                    sh '''
+                        minikube start
+                        kubectl config use-context minikube
+                    '''
+                    
+                    // Create the Kubernetes namespace if it doesn't exist
+                    sh '''
+                        kubectl get namespace ${K8S_NAMESPACE} || kubectl create namespace ${K8S_NAMESPACE}
+                    '''
+                    
+                    // Deploy the Kubernetes files in the specified namespace
+                    sh '''
+                        kubectl apply -f k8s-deployment.yaml -n ${K8S_NAMESPACE}
+                        kubectl apply -f k8s-service.yaml -n ${K8S_NAMESPACE}
+                    '''
+                }
+            }
+        }
     }
 
     post {
