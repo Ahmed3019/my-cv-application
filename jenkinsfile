@@ -4,13 +4,11 @@ pipeline {
     environment {
         DOCKER_IMAGE = "ahmedsalama3014/frontend-task" // Docker image name
         GIT_REPO = "https://github.com/Ahmed3019/my-cv-application.git" // GitHub repository URL
-        K8S_NAMESPACE = "frontend-task" // Kubernetes namespace
         TERRAFORM_DIR = "terraform" // Directory for Terraform files
         INVENTORY_FILE = "inventory" // Ansible inventory file
         EC2_PUBLIC_IP = '' // Initialize empty variable for EC2 IP
         AWS_ACCESS_KEY_ID = credentials('aws-key-cred') // Access Key ID from Jenkins credentials
         AWS_SECRET_ACCESS_KEY = credentials('aws-secret-cred') // Secret Access Key from Jenkins credentials
-        KUBECONFIG = "/path/to/your/minikube/config" // Adjust this to the path where Minikube's kubeconfig is stored
     }
 
     stages {
@@ -114,33 +112,6 @@ pipeline {
                         --private-key ./nx-key.pem \
                         -e "ansible_ssh_common_args='-o StrictHostKeyChecking=no'"
                     '''
-                }
-            }
-        }
-
-        stage('Deploy to Existing Minikube') {
-            steps {
-                script {
-                    // Check if Minikube is running
-                    def minikubeRunning = sh(script: "/usr/local/bin/minikube status --format={{.Host}}", returnStatus: true) == 0
-                    if (minikubeRunning) {
-                        echo "Minikube is already running. Proceeding with kubectl commands."
-
-                        // Create the Kubernetes namespace if it doesn't exist
-                        sh 'kubectl create namespace ${K8S_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -'
-
-                        // Deploy the application
-                        sh 'kubectl apply -f deployment.yaml -n ${K8S_NAMESPACE}'
-                        sh 'kubectl apply -f service.yaml -n ${K8S_NAMESPACE}'
-
-                        // Get the service URL
-                        def serviceUrl = sh(script: "/usr/local/bin/minikube service frontend-task --url -n ${K8S_NAMESPACE}", returnStdout: true).trim()
-                        echo "Access your application at: ${serviceUrl}"
-                    } else {
-                        echo "Minikube is not running. Please start it locally."
-                        currentBuild.result = 'FAILURE'
-                        return // Exit the stage if Minikube is not running
-                    }
                 }
             }
         }
