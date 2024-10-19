@@ -7,9 +7,8 @@ metadata:
     app: frontend-task
 spec:
   selector:
-    app: survey-app
+    app: survey-app  # Should match the app label in deployment
   type: NodePort
   ports:
-    - port: 80
-      targetPort: 80
-
+    - port: 8020      # The port that will be exposed
+      targetPort: 80  # The port the container listens on

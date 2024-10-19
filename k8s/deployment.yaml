@@ -4,7 +4,7 @@ metadata:
   name: frontend-app-deploy
   namespace: frontend-task
   labels: 
-    app: front-app
+    app: survey-app  # Updated label to match the service selector
 spec:
   replicas: 3
   selector:
@@ -17,6 +17,13 @@ spec:
     spec:
       containers:
         - name: survey-app
-          image: ahmedsalama3014/frontend-task:v4
+          image: ahmedsalama3014/frontend-task:latest  # Use 'latest' as the Jenkins file pushes the latest image
           ports:
-            - containerPort: 80
+            - containerPort: 80  # Port the container listens on
+          resources:
+            requests:
+              memory: "256Mi"    # Minimum memory the container is guaranteed
+              cpu: "250m"        # Minimum CPU the container is guaranteed
+            limits:
+              memory: "512Mi"     # Maximum memory the container can use
+              cpu: "500m"         # Maximum CPU the container can use

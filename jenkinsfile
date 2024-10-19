@@ -21,6 +21,38 @@ pipeline {
             }
         }
 
+        stage('Check for Changes in GitHub') {
+            steps {
+                script {
+                    // Check for any new commits in the GitHub repository
+                    def changes = sh(script: "git fetch origin main && git status --porcelain", returnStdout: true).trim()
+                    if (changes) {
+                        echo "Changes detected in GitHub repository."
+                    } else {
+                        echo "No changes detected in GitHub repository. Skipping build."
+                        currentBuild.result = 'SUCCESS'
+                        return // Skip remaining stages
+                    }
+                }
+            }
+        }
+
+        stage('Check if Image Exists on Docker Hub') {
+            steps {
+                script {
+                    // Check if the image already exists in Docker Hub
+                    def imageExists = sh(script: "docker pull ${DOCKER_IMAGE}:latest && docker inspect --format='{{.Id}}' ${DOCKER_IMAGE}:latest", returnStatus: true)
+                    if (imageExists == 0) {
+                        echo "Image already exists on Docker Hub. Skipping build and push."
+                        currentBuild.result = 'SUCCESS'
+                        return // Skip remaining stages
+                    } else {
+                        echo "Image not found on Docker Hub. Proceeding to build."
+                    }
+                }
+            }
+        }
+
         stage('Build Docker Image') {
             steps {
                 script {
@@ -85,25 +117,22 @@ pipeline {
             }
         }
 
-        stage('Run Minikube and Deploy to Kubernetes') {
+        stage('Run Minikube Locally') {
             steps {
                 script {
                     // Start Minikube
-                    sh '''
-                        minikube start
-                        kubectl config use-context minikube
-                    '''
-                    
+                    sh 'minikube start'
+
                     // Create the Kubernetes namespace if it doesn't exist
-                    sh '''
-                        kubectl get namespace ${K8S_NAMESPACE} || kubectl create namespace ${K8S_NAMESPACE}
-                    '''
-                    
-                    // Deploy the Kubernetes files in the specified namespace
-                    sh '''
-                        kubectl apply -f k8s-deployment.yaml -n ${K8S_NAMESPACE}
-                        kubectl apply -f k8s-service.yaml -n ${K8S_NAMESPACE}
-                    '''
+                    sh 'kubectl create namespace ${K8S_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -'
+
+                    // Deploy the application
+                    sh 'kubectl apply -f deployment.yaml -n ${K8S_NAMESPACE}'
+                    sh 'kubectl apply -f service.yaml -n ${K8S_NAMESPACE}'
+
+                    // Get the service URL
+                    def serviceUrl = sh(script: "minikube service frontend-task --url -n ${K8S_NAMESPACE}", returnStdout: true).trim()
+                    echo "Access your application at: ${serviceUrl}"
                 }
             }
         }
