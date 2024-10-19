@@ -121,7 +121,7 @@ pipeline {
             steps {
                 script {
                     // Start Minikube
-                    sh 'minikube start'
+                    sh '/usr/local/bin/minikube start' // Use the full path to minikube
 
                     // Create the Kubernetes namespace if it doesn't exist
                     sh 'kubectl create namespace ${K8S_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -'
@@ -131,7 +131,7 @@ pipeline {
                     sh 'kubectl apply -f service.yaml -n ${K8S_NAMESPACE}'
 
                     // Get the service URL
-                    def serviceUrl = sh(script: "minikube service frontend-task --url -n ${K8S_NAMESPACE}", returnStdout: true).trim()
+                    def serviceUrl = sh(script: "/usr/local/bin/minikube service frontend-task --url -n ${K8S_NAMESPACE}", returnStdout: true).trim()
                     echo "Access your application at: ${serviceUrl}"
                 }
             }
