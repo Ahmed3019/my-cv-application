@@ -120,8 +120,16 @@ pipeline {
         stage('Run Minikube Locally') {
             steps {
                 script {
-                    // Start Minikube
-                    sh '/usr/local/bin/minikube start' // Use the full path to minikube
+                    // Check if Minikube is already running
+                    def minikubeStatus = sh(script: "/usr/local/bin/minikube status --format '{{.Host}}'", returnStdout: true).trim()
+                    
+                    if (minikubeStatus == 'Running') {
+                        echo "Minikube is already running. Skipping Minikube start."
+                    } else {
+                        // Start Minikube
+                        sh '/usr/local/bin/minikube start' // Use the full path to minikube
+                        echo "Minikube started."
+                    }
 
                     // Create the Kubernetes namespace if it doesn't exist
                     sh 'kubectl create namespace ${K8S_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -'
