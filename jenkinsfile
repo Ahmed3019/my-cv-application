@@ -121,21 +121,23 @@ pipeline {
             steps {
                 script {
                     // Check if Minikube is running
-                    def minikubeStatus = sh(script: "/usr/local/bin/minikube status --format={{.Host}}", returnStatus: true)
-
-                    if (minikubeStatus == 0) {
-                        echo "Minikube is already running."
-                    } else {
+                    def status = sh(script: "/usr/local/bin/minikube status --format={{.Host}}", returnStatus: true)
+                    if (status != 0) {
                         echo "Minikube is not running. Starting Minikube..."
-                        sh '/usr/local/bin/minikube start' // Start Minikube
+                        def startResult = sh(script: "/usr/local/bin/minikube start", returnStatus: true)
+                        if (startResult != 0) {
+                            error "Failed to start Minikube. Please check the logs."
+                        }
+                    } else {
+                        echo "Minikube is already running."
                     }
 
                     // Create the Kubernetes namespace if it doesn't exist
-                    sh 'kubectl create namespace ${K8S_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -'
+                    sh "kubectl create namespace ${K8S_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -"
 
                     // Deploy the application
-                    sh 'kubectl apply -f deployment.yaml -n ${K8S_NAMESPACE}'
-                    sh 'kubectl apply -f service.yaml -n ${K8S_NAMESPACE}'
+                    sh "kubectl apply -f deployment.yaml -n ${K8S_NAMESPACE}"
+                    sh "kubectl apply -f service.yaml -n ${K8S_NAMESPACE}"
 
                     // Get the service URL
                     def serviceUrl = sh(script: "/usr/local/bin/minikube service frontend-task --url -n ${K8S_NAMESPACE}", returnStdout: true).trim()
