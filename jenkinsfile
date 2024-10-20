@@ -3,17 +3,21 @@ pipeline {
 
     environment {
         DIGITALOCEAN_TOKEN = credentials('digitalocean_token') // Store your DigitalOcean API token securely
+        GITHUB_CREDENTIALS = credentials('github-cred') // Store your GitHub credentials securely
         INVENTORY_FILE = 'inventory.ini'
         PROJECT_DIR = 'final-project-digitalocean' // Your project directory
         TERRAFORM_DIR = "${WORKSPACE}/${PROJECT_DIR}/terraform" // Path to your Terraform files
-        SSH_KEY_PATH = '/home/ahmed/.ssh/my-key' // Path to your SSH key
+        SSH_KEY_PATH = '/home/ahmed/.ssh/id_rsa.pub' // Path to your SSH key
         DROPLET_NAME = 'my-droplet' // Name of the DigitalOcean droplet
     }
 
     stages {
         stage('Clone Repository') {
             steps {
-                git branch: 'main', url: 'https://github.com/Ahmed3019/final-project-digitalocean.git'
+                script {
+                    // Use GitHub credentials to clone the repository
+                    git branch: 'main', url: 'https://github.com/Ahmed3019/final-project-digitalocean.git', credentialsId: 'github-cred'
+                }
             }
         }
 
