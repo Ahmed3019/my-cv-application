@@ -45,8 +45,8 @@ pipeline {
                         echo "Droplet Public IP: ${DROPLET_PUBLIC_IP}" // Log the captured IP for debugging
                         
                         // Create the Ansible inventory file in the Jenkins workspace
-                        writeFile file: "${env.WORKSPACE}/${INVENTORY_FILE}", text: "[frontend]\n${DROPLET_PUBLIC_IP} ansible_user=root ansible_ssh_private_key_file=${SSH_KEY_PATH}"
-                        echo "Ansible inventory file created at: ${env.WORKSPACE}/${INVENTORY_FILE}"
+                        writeFile file: "${WORKSPACE}/${INVENTORY_FILE}", text: "[frontend]\n${DROPLET_PUBLIC_IP} ansible_user=root ansible_ssh_private_key_file=${SSH_KEY_PATH}"
+                        echo "Ansible inventory file created at: ${WORKSPACE}/${INVENTORY_FILE}"
                     }
                 }
             }
@@ -54,7 +54,14 @@ pipeline {
 
         stage('Run Ansible Playbook') {
             steps {
-                sh "ansible-playbook -i ${WORKSPACE}/${INVENTORY_FILE} setup.yaml"
+                script {
+                    // Run the Ansible playbook if the previous steps were successful
+                    if (currentBuild.result == null) {
+                        sh "ansible-playbook -i ${WORKSPACE}/${INVENTORY_FILE} setup.yaml"
+                    } else {
+                        echo "Skipping Ansible Playbook execution due to previous errors."
+                    }
+                }
             }
         }
     }
