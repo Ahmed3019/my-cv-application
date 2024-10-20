@@ -2,83 +2,31 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = "ahmedsalama3014/frontend-task" // Docker image name
-        GIT_REPO = "https://github.com/Ahmed3019/my-cv-application.git" // GitHub repository URL
-        TERRAFORM_DIR = "terraform" // Directory for Terraform files
-        INVENTORY_FILE = "inventory" // Ansible inventory file
-        EC2_PUBLIC_IP = '' // Initialize empty variable for EC2 IP
-        AWS_ACCESS_KEY_ID = credentials('aws-key-cred') // Access Key ID from Jenkins credentials
-        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-cred') // Secret Access Key from Jenkins credentials
+        DIGITALOCEAN_TOKEN = credentials('digitalocean_token') // Store your DigitalOcean API token securely
+        INVENTORY_FILE = 'inventory.ini'
+        PROJECT_DIR = 'final-project-digitalocean' // Your project directory
+        TERRAFORM_DIR = "${WORKSPACE}/${PROJECT_DIR}/terraform" // Path to your Terraform files
+        SSH_KEY_PATH = '/home/ahmed/.ssh/my-key' // Path to your SSH key
+        DROPLET_NAME = 'my-droplet' // Name of the DigitalOcean droplet
     }
 
     stages {
-        stage('Clone GitHub Repo') {
+        stage('Clone Repository') {
             steps {
-                script {
-                    git branch: 'main', credentialsId: 'github-cred', url: "${GIT_REPO}"
-                }
+                git branch: 'main', url: 'https://github.com/Ahmed3019/final-project-digitalocean.git'
             }
         }
 
-        stage('Check for Changes in GitHub') {
-            steps {
-                script {
-                    // Check for any new commits in the GitHub repository
-                    def changes = sh(script: "git fetch origin main && git status --porcelain", returnStdout: true).trim()
-                    if (changes) {
-                        echo "Changes detected in GitHub repository."
-                    } else {
-                        echo "No changes detected in GitHub repository. Skipping build."
-                        currentBuild.result = 'SUCCESS'
-                        return // Skip remaining stages
-                    }
-                }
-            }
-        }
-
-        stage('Check if Image Exists on Docker Hub') {
-            steps {
-                script {
-                    // Check if the image already exists in Docker Hub
-                    def imageExists = sh(script: "docker pull ${DOCKER_IMAGE}:latest && docker inspect --format='{{.Id}}' ${DOCKER_IMAGE}:latest", returnStatus: true)
-                    if (imageExists == 0) {
-                        echo "Image already exists on Docker Hub. Skipping build and push."
-                        currentBuild.result = 'SUCCESS'
-                        return // Skip remaining stages
-                    } else {
-                        echo "Image not found on Docker Hub. Proceeding to build."
-                    }
-                }
-            }
-        }
-
-        stage('Build Docker Image') {
-            steps {
-                script {
-                    dockerImage = docker.build("${DOCKER_IMAGE}:latest")
-                }
-            }
-        }
-
-        stage('Push Docker Image') {
-            steps {
-                script {
-                    docker.withRegistry('https://index.docker.io/v1/', 'docker-hub-cred') {
-                        dockerImage.push()
-                    }
-                }
-            }
-        }
-
-        stage('Run Terraform to Create EC2') {
+        stage('Run Terraform to Create Droplet') {
             steps {
                 dir("${TERRAFORM_DIR}") {
                     script {
                         sh '''
                             terraform init
                             terraform plan -out=tfplan \
-                                -var="aws_access_key_id=${AWS_ACCESS_KEY_ID}" \
-                                -var="aws_secret_access_key=${AWS_SECRET_ACCESS_KEY}"
+                                -var="digitalocean_token=${DIGITALOCEAN_TOKEN}" \
+                                -var="droplet_name=${DROPLET_NAME}" \
+                                -var="ssh_key_path=${SSH_KEY_PATH}"
 
                             # Check if there are changes to be applied
                             if terraform show -json tfplan | jq .resource_changes | grep -q '"change"'; then
@@ -88,42 +36,28 @@ pipeline {
                                 echo "No changes to infrastructure, skipping apply."
                             fi
                         '''
-                        // Capture the public IP of the EC2 instance
-                        EC2_PUBLIC_IP = sh(script: "terraform output -raw instance_ip", returnStdout: true).trim()
-                        echo "EC2 Public IP: ${EC2_PUBLIC_IP}" // Log the captured IP for debugging
+                        // Capture the public IP of the Droplet
+                        DROPLET_PUBLIC_IP = sh(script: "terraform output -raw droplet_ip", returnStdout: true).trim()
+                        echo "Droplet Public IP: ${DROPLET_PUBLIC_IP}" // Log the captured IP for debugging
                         
                         // Create the Ansible inventory file in the Jenkins workspace
-                        writeFile file: "${env.WORKSPACE}/${INVENTORY_FILE}", text: "[frontend]\n${EC2_PUBLIC_IP} ansible_user=ubuntu ansible_ssh_private_key_file=./nx-key.pem"
+                        writeFile file: "${env.WORKSPACE}/${INVENTORY_FILE}", text: "[frontend]\n${DROPLET_PUBLIC_IP} ansible_user=root ansible_ssh_private_key_file=${SSH_KEY_PATH}"
                         echo "Ansible inventory file created at: ${env.WORKSPACE}/${INVENTORY_FILE}"
                     }
                 }
             }
         }
 
-        stage('Setup Environment on EC2 using Ansible') {
+        stage('Run Ansible Playbook') {
             steps {
-                script {
-                    // Ensure the nx-key.pem file has the correct permissions
-                    sh 'chmod 600 nx-key.pem'
-
-                    // Run the Ansible playbook from the local machine targeting the EC2 instance
-                    sh '''
-                        ansible-playbook -i ${WORKSPACE}/${INVENTORY_FILE} setup_environment.yaml \
-                        --private-key ./nx-key.pem \
-                        -e "ansible_ssh_common_args='-o StrictHostKeyChecking=no'"
-                    '''
-                }
+                sh "ansible-playbook -i ${WORKSPACE}/${INVENTORY_FILE} setup.yaml"
             }
         }
     }
 
     post {
         always {
-            script {
-                def exposedPort = '8020' // Port you want to expose
-                def appUrl = "http://${EC2_PUBLIC_IP}:${exposedPort}"
-                echo "Pipeline finished. EC2 Public IP: ${EC2_PUBLIC_IP}, Exposed Port: ${exposedPort}, Application URL: ${appUrl}"
-            }
+            echo 'Pipeline finished.'
         }
     }
 }
