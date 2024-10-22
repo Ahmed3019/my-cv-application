@@ -1,4 +1,5 @@
 # **My CV Application - DevOps Project**
+![Automated Photo](automated.gif)
 
 This project is a simple web application designed to demonstrate a complete DevOps pipeline that integrates tools such as **Git**, **Jenkins**, **Docker**, **Terraform**, **Ansible**, **AWS EC2**, and **Kubernetes (Minikube)**. The pipeline automates the deployment of the application and can be run both on AWS EC2 and locally with Kubernetes.
 
